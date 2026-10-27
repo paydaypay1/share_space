@@ -1,0 +1,6 @@
+%h1.title Canvas settings
+.box.form-box
+  = render "form"
+  - if @canvas.persisted?
+    %hr
+    = button_to "Delete canvas", canvas_path(@canvas), method: :delete, class: "button is-danger is-light", form: { data: { turbo_confirm: "Delete this canvas and all its elements?" } }

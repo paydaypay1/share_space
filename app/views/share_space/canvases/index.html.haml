@@ -1,0 +1,20 @@
+.level
+  .level-left
+    %div
+      %h1.title Canvases
+      %p.subtitle Create and edit your browser based canvases.
+  .level-right
+    = link_to "New canvas", new_canvas_path, class: "button is-primary"
+- if @canvases.any?
+  .columns.is-multiline
+    - @canvases.each do |canvas|
+      .column.is-one-quarter
+        .card
+          .card-content
+            %p.title.is-5= canvas.name
+            %p.subtitle.is-6= "#{canvas.width} × #{canvas.height}"
+          .card-footer
+            = link_to "Open editor", canvas_path(canvas), class: "card-footer-item"
+            = link_to "Settings", edit_canvas_path(canvas), class: "card-footer-item"
+- else
+  .notification.is-light No canvases yet. Create one to start drawing.

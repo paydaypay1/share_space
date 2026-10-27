@@ -1,0 +1,131 @@
+- content_for :head do
+  %meta{ name: "csrf-token", content: form_authenticity_token }
+.level.editor-heading
+  .level-left
+    %div
+      %h1.title.is-4= @canvas.name
+      %p.subtitle.is-6= "#{@canvas.width} × #{@canvas.height} px"
+  .level-right
+    = link_to "All canvases", canvases_path, class: "button is-light"
+    = link_to "Settings", edit_canvas_path(@canvas), class: "button is-light"
+.columns.editor-layout
+  .column.is-narrow.toolbox
+    %p.menu-label Add element
+    .buttons.are-small.is-flex-direction-column.is-align-items-stretch
+      %button.button.is-primary{ type: "button", data: { draw: "rectangle" } } Rectangle
+      %button.button{ type: "button", data: { draw: "ellipse" } } Ellipse
+      %button.button{ type: "button", data: { draw: "line" } } Line
+      %button.button{ type: "button", data: { draw: "select" } } Select / move
+    %hr
+    %p.menu-label Selected element
+    %p#selection-empty.has-text-grey.is-size-7 Click a shape to edit its properties.
+    #inspector.is-hidden
+      .field
+        %label.label X
+        .control= number_field_tag :element_x, nil, class: "input is-small", id: "element-x", step: "any"
+      .field
+        %label.label Y
+        .control= number_field_tag :element_y, nil, class: "input is-small", id: "element-y", step: "any"
+      .field
+        %label.label Width
+        .control= number_field_tag :element_width, nil, class: "input is-small", id: "element-width", min: 1, step: "any"
+      .field
+        %label.label Height
+        .control= number_field_tag :element_height, nil, class: "input is-small", id: "element-height", min: 1, step: "any"
+      .field
+        %label.label Fill
+        .control= color_field_tag :element_fill_color, "#48c78e", class: "input is-small canvas-color", id: "element-fill"
+      .buttons
+        %button#delete-element.button.is-danger.is-light.is-small{ type: "button" } Delete
+  .column.canvas-column
+    .canvas-scroll
+      %svg#canvas-editor{ xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 #{@canvas.width} #{@canvas.height}", width: @canvas.width, height: @canvas.height,
+        style: "background: #{@canvas.background_color}", data: { canvas_width: @canvas.width, canvas_height: @canvas.height,
+          create_url: canvas_elements_path(@canvas), update_url: canvas_elements_path(@canvas, id: "ELEMENT_ID"),
+          csrf: form_authenticity_token } }
+        - @elements.each do |element|
+          - next unless element.visible
+          - attrs = { "data-id" => element.id, "data-type" => element.type.demodulize.downcase,
+            "data-x" => element.x.to_f, "data-y" => element.y.to_f, "data-width" => element.width.to_f,
+            "data-height" => element.height.to_f, "data-fill" => element.fill_color || "#48c78e",
+            "data-stroke" => element.stroke_color || "#257953", "data-stroke-width" => element.stroke_width.to_f,
+            "data-opacity" => element.opacity.to_f, "data-locked" => element.locked }
+          - if element.is_a?(Line)
+            - points = (element.points || []).map { |point| point.is_a?(Array) ? point.join(",") : point }.join(" ")
+            %polyline{ **attrs, points: points, fill: "none", stroke: element.stroke_color || "#257953", "stroke-width" => element.stroke_width || 2 }
+          - elsif element.is_a?(Ellipse)
+            %ellipse{ **attrs, cx: element.x.to_f + element.width.to_f / 2, cy: element.y.to_f + element.height.to_f / 2,
+              rx: element.width.to_f / 2, ry: element.height.to_f / 2, fill: element.fill_color || "#48c78e",
+              stroke: element.stroke_color || "#257953", "stroke-width" => element.stroke_width || 2, opacity: element.opacity }
+          - else
+            %rect{ **attrs, x: element.x, y: element.y, width: element.width, height: element.height,
+              fill: element.fill_color || "#48c78e", stroke: element.stroke_color || "#257953",
+              "stroke-width" => element.stroke_width || 2, opacity: element.opacity }
+:javascript
+  (() => {
+    const svg = document.getElementById("canvas-editor");
+    if (!svg) return;
+    const token = svg.dataset.csrf;
+    let tool = "select", selected = null, drag = null;
+    const inspector = document.getElementById("inspector");
+    const empty = document.getElementById("selection-empty");
+    const fields = { x: document.getElementById("element-x"), y: document.getElementById("element-y"),
+      width: document.getElementById("element-width"), height: document.getElementById("element-height"),
+      fill_color: document.getElementById("element-fill") };
+    const urlFor = id => svg.dataset.updateUrl.replace("ELEMENT_ID", id);
+    const localPoint = event => {
+      const p = svg.createSVGPoint(); p.x = event.clientX; p.y = event.clientY;
+      return p.matrixTransform(svg.getScreenCTM().inverse());
+    };
+    const payload = el => ({ x: Number(el.dataset.x), y: Number(el.dataset.y), width: Number(el.dataset.width),
+      height: Number(el.dataset.height), fill_color: el.dataset.fill });
+    const render = el => {
+      const x = Number(el.dataset.x), y = Number(el.dataset.y), w = Number(el.dataset.width), h = Number(el.dataset.height);
+      const shape = el.dataset.type === "ellipse" ? document.createElementNS("http://www.w3.org/2000/svg", "ellipse") :
+        el.dataset.type === "line" ? document.createElementNS("http://www.w3.org/2000/svg", "line") :
+        document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      shape.dataset.id = el.dataset.id; shape.dataset.type = el.dataset.type;
+      Object.assign(shape.dataset, { x, y, width: w, height: h, fill: el.dataset.fill, stroke: el.dataset.stroke || "#257953", locked: el.dataset.locked || "false" });
+      shape.setAttribute("fill", el.dataset.type === "line" ? "none" : el.dataset.fill);
+      shape.setAttribute("stroke", el.dataset.stroke || "#257953"); shape.setAttribute("stroke-width", el.dataset.strokeWidth || 2);
+      if (el.dataset.type === "ellipse") { shape.setAttribute("cx", x + w / 2); shape.setAttribute("cy", y + h / 2); shape.setAttribute("rx", w / 2); shape.setAttribute("ry", h / 2); }
+      else if (el.dataset.type === "line") { shape.setAttribute("x1", x); shape.setAttribute("y1", y); shape.setAttribute("x2", x + w); shape.setAttribute("y2", y + h); }
+      else { shape.setAttribute("x", x); shape.setAttribute("y", y); shape.setAttribute("width", w); shape.setAttribute("height", h); }
+      shape.setAttribute("opacity", el.dataset.opacity || 1); shape.classList.add("canvas-shape");
+      return shape;
+    };
+    const select = el => {
+      selected = el;
+      svg.querySelectorAll(".canvas-shape").forEach(shape => shape.classList.toggle("is-selected", shape === el));
+      inspector.classList.toggle("is-hidden", !el); empty.classList.toggle("is-hidden", !!el);
+      if (el) Object.entries(fields).forEach(([key, input]) => input.value = key === "fill_color" ? el.dataset.fill : el.dataset[key]);
+    };
+    const save = async (el, attrs) => {
+      Object.entries(attrs).forEach(([key, value]) => { el.dataset[key === "fill_color" ? "fill" : key] = value; });
+      const response = await fetch(urlFor(el.dataset.id), { method: "PATCH", headers: { "Content-Type": "application/json", "X-CSRF-Token": token, Accept: "application/json" }, body: JSON.stringify({ element: attrs }) });
+      if (!response.ok) return;
+      const replacement = render(el); el.replaceWith(replacement); if (selected === el) select(replacement);
+    };
+    svg.querySelectorAll("[data-id]").forEach(el => { const shape = render(el); el.replaceWith(shape); });
+    svg.addEventListener("pointerdown", event => {
+      const el = event.target.closest(".canvas-shape");
+      if (tool !== "select") return;
+      if (el) { select(el); if (el.dataset.locked !== "true") { const p = localPoint(event); drag = { el, x: p.x, y: p.y, startX: Number(el.dataset.x), startY: Number(el.dataset.y) }; svg.setPointerCapture(event.pointerId); } }
+      else select(null);
+    });
+    svg.addEventListener("pointermove", event => { if (!drag) return; const p = localPoint(event); drag.el.dataset.x = drag.startX + p.x - drag.x; drag.el.dataset.y = drag.startY + p.y - drag.y; const updated = render(drag.el); drag.el.replaceWith(updated); drag.el = updated; select(updated); });
+    svg.addEventListener("pointerup", () => { if (drag) { save(drag.el, { x: Number(drag.el.dataset.x), y: Number(drag.el.dataset.y) }); drag = null; } });
+    document.querySelectorAll("[data-draw]").forEach(button => button.addEventListener("click", () => { tool = button.dataset.draw; document.querySelectorAll("[data-draw]").forEach(b => b.classList.toggle("is-primary", b === button)); }));
+    svg.addEventListener("click", async event => {
+      if (tool === "select" || event.target.closest(".canvas-shape")) return;
+      const p = localPoint(event), kind = tool;
+      const attrs = { type: `ShareSpace::${kind[0].toUpperCase()}${kind.slice(1)}`, x: p.x, y: p.y, width: kind === "line" ? 120 : 140, height: kind === "line" ? 80 : 90, fill_color: "#48c78e", stroke_color: "#257953", stroke_width: 2, opacity: 1, visible: true, locked: false, points: kind === "line" ? [`${p.x},${p.y}`, `${p.x + 120},${p.y + 80}`] : [] };
+      const response = await fetch(svg.dataset.createUrl, { method: "POST", headers: { "Content-Type": "application/json", "X-CSRF-Token": token, Accept: "application/json" }, body: JSON.stringify({ element: attrs }) });
+      if (!response.ok) return;
+      const data = await response.json(), el = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      Object.assign(el.dataset, { id: data.id, type: kind, x: data.x, y: data.y, width: data.width, height: data.height, fill: data.fill_color, stroke: data.stroke_color, strokeWidth: data.stroke_width, opacity: data.opacity });
+      const shape = render(el); svg.appendChild(shape); select(shape); tool = "select";
+    });
+    Object.entries(fields).forEach(([key, input]) => input.addEventListener("change", () => { if (selected) save(selected, { [key]: key === "fill_color" ? input.value : Number(input.value) }); }));
+    document.getElementById("delete-element").addEventListener("click", async () => { if (!selected) return; await fetch(urlFor(selected.dataset.id), { method: "DELETE", headers: { "X-CSRF-Token": token } }); selected.remove(); select(null); });
+  })();

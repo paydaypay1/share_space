@@ -1,4 +1,4 @@
-require_relative "lib/sharespace/version"
+require_relative "lib/share_space/version"
 
 Gem::Specification.new do |spec|
   spec.name = "share_space"
@@ -22,4 +22,5 @@ Gem::Specification.new do |spec|
   end
 
   spec.add_dependency "rails", ">= 8.1.4"
+  spec.add_dependency "haml-rails", ">= 2.0"
 end

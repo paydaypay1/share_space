@@ -13,3 +13,20 @@
  *= require_tree .
  *= require_self
  */
+.editor-heading { margin-bottom: 1rem !important; }
+.editor-layout { align-items: flex-start; }
+.toolbox { width: 230px; }
+.toolbox .buttons { gap: .5rem; }
+.canvas-column { min-width: 0; }
+.canvas-scroll { overflow: auto; max-height: calc(100vh - 230px); padding: 1.25rem; background: #f1f3f5; border-radius: 8px; }
+#canvas-editor { display: block; max-width: none; box-shadow: 0 2px 12px rgb(10 10 10 / 12%); touch-action: none; }
+.canvas-shape { cursor: grab; }
+.canvas-shape:active { cursor: grabbing; }
+.canvas-shape.is-selected { filter: drop-shadow(0 0 4px #485fc7); }
+.form-box { max-width: 640px; }
+.canvas-color { max-width: 5rem; padding: .25rem; }
+@media (max-width: 768px) {
+  .toolbox { width: 100%; }
+  .toolbox .buttons { flex-direction: row !important; }
+  .canvas-scroll { max-height: 65vh; }
+}

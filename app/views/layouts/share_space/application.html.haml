@@ -1,0 +1,21 @@
+!!!
+%html
+  %head
+    %title ShareSpace canvas
+    %meta{ name: "viewport", content: "width=device-width, initial-scale=1" }
+    = csrf_meta_tags
+    = csp_meta_tag
+    %link{ rel: "stylesheet", href: "https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css" }
+    = stylesheet_link_tag "share_space/application", media: "all"
+    = yield :head
+  %body
+    %nav.navbar.is-dark{ role: "navigation" }
+      .navbar-brand
+        = link_to "ShareSpace", canvases_path, class: "navbar-item has-text-weight-bold"
+    %main.section
+      .container.is-fluid
+        - if notice
+          .notification.is-success.is-light= notice
+        - if alert
+          .notification.is-danger.is-light= alert
+        = yield

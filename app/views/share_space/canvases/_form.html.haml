@@ -1,0 +1,21 @@
+= form_with model: @canvas, url: (@canvas.persisted? ? canvas_path(@canvas) : canvases_path) do |form|
+  - if @canvas.errors.any?
+    .notification.is-danger= @canvas.errors.full_messages.to_sentence
+  .field
+    = form.label :name, class: "label"
+    .control= form.text_field :name, class: "input", required: true
+  .columns
+    .column
+      .field
+        = form.label :width, class: "label"
+        .control= form.number_field :width, class: "input", min: 1, required: true
+    .column
+      .field
+        = form.label :height, class: "label"
+        .control= form.number_field :height, class: "input", min: 1, required: true
+  .field
+    = form.label :background_color, class: "label"
+    .control= form.color_field :background_color, class: "input canvas-color"
+  .field.is-grouped.mt-5
+    .control= form.submit class: "button is-primary"
+    .control= link_to "Cancel", canvases_path, class: "button is-light"
