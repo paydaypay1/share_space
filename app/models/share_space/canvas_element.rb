@@ -5,7 +5,7 @@ module ShareSpace
     scope :visible, -> { where(visible: true) }
     scope :ordered, -> { order(:z_index, :id) }
 
-    ELEMENT_TYPES = %w[Rectangle Ellipse Line].freeze
+    ELEMENT_TYPES = %w[Rectangle Ellipse Polygon Line BezierLine FreeformLine Cube Sphere Cylinder Mask].freeze
 
     validates :type, inclusion: { in: ELEMENT_TYPES.map { |name| "ShareSpace::#{name}" } }
 
